@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # go.temporal.io/sdk lives here. mockery is pinned to a fork commit through a `replace`
+  # in go.mod, so Dependabot leaves it alone: bump it by hand until vektra/mockery#1189 merges.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      go-deps:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

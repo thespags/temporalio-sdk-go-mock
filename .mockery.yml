@@ -1,0 +1,50 @@
+# What to generate: testify-style mocks.
+template: testify
+# Where to put them: one directory per source package, named after it (pkgname defaults to the same).
+# e.g. go.temporal.io/sdk/client -> ./client (package client), file Client.go, struct Client.
+dir: '{{.SrcPackageName}}'
+filename: '{{.InterfaceName}}.go'
+structname: '{{.InterfaceName}}'
+force-file-write: true # overwrite existing files on regen
+
+# Which interfaces: everything in the SDK module, including subpackages,
+# except the SDK's own internal/ packages.
+recursive: true
+# Render public aliases (type X = internal.X) instead of the internal types.
+resolve-internal-aliases: true
+exclude-subpkg-regex: ["internal"]
+packages:
+  go.temporal.io/sdk:
+    config:
+      all: true
+  # These can't be mocked outside the SDK. Their methods use internal types with no public alias:
+  # internal.Client (client.Client is a separate interface, so a mock using it compiles but
+  # doesn't satisfy the SDK interface), ClientPollWorkflowUpdateInput/Output and SlotReleaseReason.
+  go.temporal.io/sdk/interceptor:
+    config:
+      all: true
+    interfaces:
+      ActivityOutboundInterceptor:
+        config:
+          generate: false
+      ClientOutboundInterceptor:
+        config:
+          generate: false
+      NexusOperationOutboundInterceptor:
+        config:
+          generate: false
+  go.temporal.io/sdk/worker:
+    config:
+      all: true
+    interfaces:
+      SlotReleaseInfo:
+        config:
+          generate: false
+  # An unexported SDK interface: it can't be named outside the SDK, so its mock doesn't compile.
+  go.temporal.io/sdk/temporalnexus:
+    config:
+      all: true
+    interfaces:
+      operationTokenI:
+        config:
+          generate: false

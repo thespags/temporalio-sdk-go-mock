@@ -1,0 +1,49 @@
+name: dependabot
+
+# Regenerates mocks on Dependabot PRs, re-runs CI, and turns on auto-merge.
+# Merging is still gated by the required `ci` check (see README).
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  regen-and-automerge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: jdx/mise-action@v5
+      - name: Regenerate mocks
+        run: mise run mockery
+      - name: Commit regenerated mocks
+        id: commit
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: regenerate mocks"
+          git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+      # Pushes made with GITHUB_TOKEN don't trigger workflows, so kick CI by hand.
+      # workflow_dispatch runs attach to the branch head, satisfying the required check.
+      - name: Re-run CI on regenerated commit
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: gh workflow run ci.yml --ref "$HEAD_REF"
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
