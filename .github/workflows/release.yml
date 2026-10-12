@@ -1,0 +1,30 @@
+name: release
+
+# Tag main with the vendored SDK version so `go get ...@vX.Y.Z` lines up with
+# go.temporal.io/sdk. Skips if that tag already exists.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Tag SDK version
+        run: |
+          v=$(go list -m -f '{{.Version}}' go.temporal.io/sdk)
+          if git rev-parse "$v" >/dev/null 2>&1; then
+            echo "$v already tagged"; exit 0
+          fi
+          git tag "$v"
+          git push origin "$v"

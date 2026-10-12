@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # lets the dependabot workflow re-run CI after it pushes regenerated mocks
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - name: Mocks are up to date
+        run: |
+          mise run mockery
+          git add -N .
+          git diff --exit-code || { echo "::error::Mocks or go.mod are stale. Run 'mise run mockery' and commit."; exit 1; }
+      - run: go build ./...
